@@ -4,9 +4,7 @@ while iteration_max > 0:
     pos, iterations = 0, 1
     while iterations < iteration_max:
         num0, num1 = int(array[pos]), int(array[pos+1])
-        if num0 <= num1:
-            pass
-        else:
+        if num0 > num1:
             array[pos+1], array[pos] = array[pos], array[pos+1]
         pos, iterations = pos+1, iterations+1
     iteration_max -= 1
