@@ -4,11 +4,11 @@ class converter():
             try:
                 print("[1] Decimal to binary\n[2] Decimal to hexadecimal\n[3] Binary to decimal\n[4] Binary to hexadecimal\n[5] Hexadecimal to binary\n[6] Hexadecimal to decimal\n[7] Quit\n")
                 self.conversion = int(input('Please choose an option from the list above: '))
-                if self.conversion < 1 or self.conversion > 6:
+                if self.conversion < 1 or self.conversion > 7:
                     raise ValueError
                 return
             except ValueError as E:
-                print("Must enter a numeric value between 1 and 6")
+                print("Must enter a numeric value between 1 and 7")
     
     def convert(self):
         if self.conversion == 1:
