@@ -211,6 +211,12 @@ class Lexer:
             elif self.current_char == ')':
                 tokens.append(Token(TT_RPAREN, pos_start=self.pos))
                 self.advance()
+            elif self.current_char == '[':
+                tokens.append(Token(TT_LSQUARE, pos_start=self.pos))
+                self.advance()
+            elif self.current_char == ']':
+                tokens.append(Token(TT_RSQUARE, pos_start=self.pos))
+                self.advance()
             elif self.current_char == '!':
                 tok, error = self.make_not_equals()
                 if error: return [], error
@@ -366,6 +372,13 @@ class StringNode:
 
     def __repr__(self):
         return f'{self.tok}'
+
+class ArrayNode:
+    def __init__(self, element_nodes, pos_start, pos_end):
+        self.element_nodes = element_nodes
+
+        self.pos_start = pos_start
+        self.pos_end = pos_end
 
 class VarAccessNode:
     def __init__(self, var_name_tok):
@@ -731,7 +744,7 @@ class Parser:
                 if res.error:
                     return res.failure(InvalidSyntaxError(
                         self.current_tok.pos_start, self.current_tok.pos_end,
-                        f"Expected ')', 'if', 'for', 'while', 'function', int, real, identifier, '+', '-', '(' or 'NOT'"
+                        f"Expected ')', 'if', 'for', 'while', 'function', int, real, identifier, '+', '-', '(', '[' or 'NOT'"
                     ))
                 
                 while self.current_tok.type == TT_COMMA:
@@ -751,6 +764,53 @@ class Parser:
                 self.advance()
             return res.success(CallNode(atom, arg_nodes))
         return res.success(atom)
+
+    def array_expr(self):
+        res = ParseResult()
+        element_nodes = []
+        pos_start = self.current_tok.pos_start
+
+        if self.current_tok.type != TT_LSQUARE:
+            return res.failure(InvalidSyntaxError(
+                self.current_tok.pos_start, self.current_tok.pos_end,
+                f"Expected '['"
+            ))
+
+        res.register_advancement()
+        self.advance()
+
+        if self.current_tok.type == TT_RSQUARE:
+            res.register_advancement()
+            self.advance()
+        else:
+            element_nodes.append(res.register(self.expr()))
+            if res.error:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end,
+                    f"Expected ']', 'if', 'for', 'while', 'function', int, real, identifier, '+', '-', '(', '[' or 'NOT'"
+                ))
+            
+            while self.current_tok.type == TT_COMMA:
+                res.register_advancement()
+                self.advance()
+
+                element_nodes.append(res.register(self.expr()))
+                if res.error: return res
+
+            if self.current_tok.type != TT_RSQUARE:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end,
+                    f"Expected ',' or ']'"
+                ))
+
+            res.register_advancement()
+            self.advance()
+
+        return res.success(ArrayNode(
+            element_nodes,
+            pos_start,
+            self.current_tok.pos_end.copy()
+        ))
 
     def atom(self):
         res = ParseResult()
@@ -786,6 +846,11 @@ class Parser:
                     "Expected ')'"
 				))
 
+        elif tok.type == TT_LSQUARE:
+            array_expr = res.register(self.array_expr())
+            if res.error: return res
+            return res.success(array_expr)
+
         elif tok.matches(TT_KEYWORD, 'if'):
             if_expr = res.register(self.if_expr())
             if res.error: return res
@@ -813,7 +878,7 @@ class Parser:
 
         return res.failure(InvalidSyntaxError(
             tok.pos_start, tok.pos_end,
-            "Expected int, real, identifier, '+', '-', '(', 'if', 'for', 'while', or 'function'"
+            "Expected int, real, identifier, '+', '-', '(', '[' 'if', 'for', 'while', or 'function'"
         ))
 
     def power(self):
@@ -855,7 +920,7 @@ class Parser:
         if res.error: 
             return res.failure(InvalidSyntaxError(
                 self.current_tok.pos_start, self.current_tok.pos_end,
-                "Expected int, real, identifier, '+', '-', '(', 'NOT"
+                "Expected int, real, identifier, '+', '-', '(', '[', 'NOT"
             ))
 
         return res.success(node)
@@ -884,7 +949,7 @@ class Parser:
         if res.error: 
             return res.failure(InvalidSyntaxError(
                 self.current_tok.pos_start, self.current_tok.pos_end,
-                "Expected int, real, identifier, '+', '-', '(', 'if', 'for', 'while' or 'function'"
+                "Expected int, real, identifier, '+', '-', '(', '[', 'if', 'for', 'while' or 'function'"
             ))
 
         return res.success(node)
@@ -1224,6 +1289,10 @@ class Number(Value):
     def __repr__(self):
         return str(self.value)
 
+Number.null = Number(0)
+Number.true = Number(0)
+Number.false = Number(0)
+
 class String(Value):
     def __init__(self, value):
         super().__init__()
@@ -1254,6 +1323,59 @@ class String(Value):
 
     def __repr__(self):
         return f'"{self.value}"'
+
+class Array(Value):
+    def __init__(self, elements):
+        super().__init__()
+        self.elements = elements
+
+    def added_to(self, other):
+        new_array = self.copy()
+        new_array.elements.append(other)
+        return new_array, None
+
+    def subbed_by(self, other):
+        if isinstance(other, Number):
+            new_array = self.copy()
+            try:
+                new_array.elements.pop(other.value)
+                return new_array, None
+            except:
+                return None, RTError(
+                    other.pos_start, other.pos_end,
+                    "Element at this index could not be removed from the array because index is out of bounds"
+                )
+        else:
+            return None, Value.illegal_operation(self, other)
+
+    def multed_by(self, other):
+        if isinstance(other, Array):
+            new_array = self.copy()
+            new_array.elements.extend(other.elements)
+            return new_array, None
+        else:
+            return None, Value.illegal_operation(self, other)
+
+    def dived_by(self, other):
+        if isinstance(other, Number):
+            try:
+                return self.elements[other.value], None
+            except:
+                return None, RTError(
+                    other.pos_start, other.pos_end,
+                    "Element at this index could not be retrieved from the array because index is out of bounds"
+                )
+        else:
+            return None, Value.illegal_operation(self, other)
+
+    def copy(self):
+        copy = Array(self.elements[:])
+        copy.set_pos(self.pos_start, self.pos_end)
+        copy.set_context(self.context)
+        return copy
+
+    def __repr__(self):
+        return f'[{", ".join([str(x) for x in self.elements])}]'
 
 class Function(Value):
     def __init__(self, name, body_node, arg_names):
@@ -1356,6 +1478,18 @@ class Interpreter:
     def visit_StringNode(self, node, context):
         return RTResult().success(
             String(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
+
+    def visit_ArrayNode(self, node, context):
+        res = RTResult()
+        elements = []
+
+        for element_node in node.element_nodes:
+            elements.append(res.register(self.visit(element_node, context)))
+            if res.error: return res
+
+        return res.success(
+            Array(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
     def visit_VarAccessNode(self, node, context):
@@ -1462,6 +1596,7 @@ class Interpreter:
 
     def visit_ForNode(self, node, context):
         res = RTResult()
+        elements = []
 
         start_value = res.register(self.visit(node.start_value_node, context))
         if res.error: return res
@@ -1486,13 +1621,16 @@ class Interpreter:
             context.symbol_table.set(node.var_name_tok.value, Number(i))
             i += step_value.value
 
-            res.register(self.visit(node.body_node, context))
+            elements.append(res.register(self.visit(node.body_node, context)))
             if res.error: return res
 
-        return res.success(None)
+        return res.success(
+            Array(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
 
     def visit_WhileNode(self, node, context):
         res = RTResult()
+        elements= []
 
         while True:
             condition = res.register(self.visit(node.condition_node, context))
@@ -1500,11 +1638,12 @@ class Interpreter:
 
             if not condition.is_true(): break
 
-            res.register(self.visit(node.body_node, context))
+            elements.append(res.register(self.visit(node.body_node, context)))
             if res.error: return res
 
-        return res.success(None)
-
+        return res.success(
+            Array(elements).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
     def visit_DoWhileNode(self, node, context):
         res = RTResult()
 
@@ -1556,9 +1695,9 @@ class Interpreter:
 #######################################
 
 global_symbol_table = SymbolTable()
-global_symbol_table.set("Null", Number(0))
-global_symbol_table.set("True", Number(1))
-global_symbol_table.set("False", Number(0))
+global_symbol_table.set("Null", Number.null)
+global_symbol_table.set("True", Number.true)
+global_symbol_table.set("False", Number.false)
 
 def run(fn, text):
     if len(text) == 0:

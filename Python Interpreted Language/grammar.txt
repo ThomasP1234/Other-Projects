@@ -20,11 +20,14 @@ call			: atom (LPAREN (expr (COMMA expr)*)? RPAREN)?
 
 atom 			: INT|FLOAT|STRING|IDENTIFIER
 				: LPAREN expr RPAREN
+				: array-expr
 				: if-expr
 				: for-expr
 				: while-expr
 				: do-while-expr
 				: func-def
+
+array-expr		: LSQUARE (expr (COMMA expr)*)? RSQUARE
 
 if-expr			: KEYWORD:if expr KEYWORD:then expr
 			  	  (KEYWORD:elseif expr KEYWORD:then expr)*
