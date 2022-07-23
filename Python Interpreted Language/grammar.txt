@@ -8,15 +8,25 @@ arith-expr	: term ((PLUS|MINUS) term)*
 
 term    	: factor ((MUL|DIV) factor)*
 
-factor		: (PLUS|MINUS) factor
-			: power
+factor			: (PLUS|MINUS) factor
+				: power
 
-power		: atom (POW factor)*
+power			: atom (POW factor)*
 
-atom 		: INT|FLOAT|IDENTIFIER
-			: LPAREN expr RPAREN
-			: if-expr
+atom 			: INT|FLOAT|IDENTIFIER
+				: LPAREN expr RPAREN
+				: if-expr
+				: for-expr
+				: while-expr
+				: do-while-expr
 
-if-expr		: KEYWORD:IF expr KEYWORD:THEN expr
-			  (KEYWORD:ELSEIF expr KEYWORD:THEN expr)*
-			  (KEYWORD:ELSE expr)?
+if-expr			: KEYWORD:if expr KEYWORD:then expr
+			  	  (KEYWORD:elseif expr KEYWORD:then expr)*
+			  	  (KEYWORD:else expr)?
+
+for-expr		: KEYWORD:for IDENTIFIER EQ expr KEYWORD:to expr
+			  	  (KEYWORD:step expr)? KEYWORD:then expr
+
+while-expr		: KEYWORD:while expr KEYWORD:then expr
+
+do-while-expr	: KEYWORD: do expr KEYWORD:until expr
