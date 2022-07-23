@@ -6,7 +6,7 @@ comp-expr	: KEYWORD:NOT comp-expr
 
 arith-expr	: term ((PLUS|MINUS) term)*
 
-term    	: factor ((MUL|DIV) factor)*
+term    	: factor ((MUL|DIV|INT-DIV|MOD) factor)*
 
 factor			: (PLUS|MINUS) factor
 				: power
