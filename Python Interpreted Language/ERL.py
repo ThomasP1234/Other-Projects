@@ -111,8 +111,10 @@ TT_EE           = 'EE'
 TT_NE           = 'NE'
 TT_LT           = 'LT'
 TT_GT           = 'GT'
-TT_LTE           = 'LTE'
-TT_GTE           = 'GTE'
+TT_LTE          = 'LTE'
+TT_GTE          = 'GTE'
+TT_COMMA        = 'COMMA'
+TT_ARROW        = 'ARROW'
 TT_EOF		    = 'EOF'
 
 KEYWORDS = [
@@ -437,7 +439,7 @@ class Parser:
         if not res.error and self.current_tok.type != TT_EOF:
             return res.failure(InvalidSyntaxError(
                 self.current_tok.pos_start, self.current_tok.pos_end,
-                "Expected '+', '-', '*', '/', or '^'"
+                "Expected '+', '-', '*', '/', 'DIV', 'MOD' or '^'"
             ))
         return res
 
@@ -700,7 +702,7 @@ class Parser:
         return self.power()
 
     def term(self):
-        return self.bin_op(self.factor, (TT_MUL, TT_DIV))
+        return self.bin_op(self.factor, (TT_MUL, TT_DIV, (TT_KEYWORD, 'DIV'), (TT_KEYWORD, 'MOD')))
 
     def arith_expr(self):
         return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
@@ -878,6 +880,28 @@ class Number:
     def notted(self):
         return Number(1 if self.value == 0 else 0).set_context(self.context), None
 
+    def int_dived_by(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end,
+                    'Integer division by zero',
+                    self.context
+				)
+
+            return Number(int(self.value / other.value)).set_context(self.context), None
+
+    def modded_by(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end,
+                    'Modulo by zero',
+                    self.context
+				)
+
+            return Number(self.value % other.value).set_context(self.context), None
+
     def copy(self):
         copy = Number(self.value)
         copy.set_pos(self.pos_start, self.pos_end)
@@ -999,6 +1023,10 @@ class Interpreter:
             result, error = left.anded_by(right)
         elif node.op_tok.matches(TT_KEYWORD, 'OR'):
             result, error = left.ored_by(right)
+        elif node.op_tok.matches(TT_KEYWORD, 'DIV'):
+            result, error = left.int_dived_by(right)
+        elif node.op_tok.matches(TT_KEYWORD, 'MOD'):
+            result, error = left.modded_by(right)
 
         if error:
             return res.failure(error)
