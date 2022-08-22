@@ -2,6 +2,9 @@
 # IMPORTS
 #######################################
 
+from numpy import number
+
+
 try:
     from string_with_arrows import *
 except ImportError as error:
@@ -113,8 +116,10 @@ class Position:
 TT_INT		    = 'INT'
 TT_REAL         = 'REAL'
 TT_STRING       = 'STRING'
+TT_FILE         = 'FILE'
 TT_IDENTIFIER   = 'IDENTIFIER'
-TT_KEYWORD      = 'KEYWORD' 
+TT_KEYWORD      = 'KEYWORD'
+TT_DOT          = 'DOT' 
 TT_PLUS         = 'PLUS'
 TT_MINUS        = 'MINUS'
 TT_MUL          = 'MUL'
@@ -206,6 +211,9 @@ class Lexer:
                 tokens.append(self.make_identifier())
             elif self.current_char == '"':
                 tokens.append(self.make_string())
+            elif self.current_char == '.':
+                tokens.append(Token(TT_DOT, pos_start=self.pos))
+                self.advance()
             elif self.current_char == '+':
                 tokens.append(Token(TT_PLUS, pos_start=self.pos))
                 self.advance()
@@ -395,6 +403,16 @@ class ArrayNode:
         self.pos_start = pos_start
         self.pos_end = pos_end
 
+class FileNode:
+    def __init__(self, tok):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.end_start = self.tok.end_start
+
+    def __repr__(self):
+        return f'{self.tok}'
+
 class VarAccessNode:
     def __init__(self, var_name_tok):
         self.var_name_tok = var_name_tok
@@ -495,6 +513,19 @@ class CallNode:
         else:
             self.pos_end = self.node_to_call.pos_end
 
+class MethodCallNode:
+    def __init__(self, type_, node_to_call, arg_nodes):
+        self.type = type_
+        self.node_to_call = node_to_call
+        self.arg_nodes = arg_nodes
+
+        self.pos_start = self.type.pos_start
+
+        if len(self.arg_nodes) > 0:
+            self.pos_end = self.arg_nodes[len(self.arg_nodes)-1].pos_end
+        else:
+            self.pos_end = self.node_to_call.pos_end
+
 #######################################
 # PARSE RESULT
 #######################################
@@ -508,6 +539,7 @@ class ParseResult:
     def register(self, res):
         self.advance_count += res.advance_count
         if res.error: self.error = res.error
+        res.node = res.node
         return res.node
 
     def register_advancement(self):
@@ -745,6 +777,30 @@ class Parser:
         res = ParseResult()
         atom = res.register(self.atom())
         if res.error: return res
+        method = False
+
+        if self.current_tok.type == TT_DOT:
+            res.register_advancement()
+            self.advance()
+
+            if self.current_tok.type != TT_IDENTIFIER:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end,
+                    f"Expected identifier"
+                ))
+
+            identifier = VarAccessNode(self.current_tok)
+            
+            res.register_advancement()
+            self.advance()
+
+            if self.current_tok.type != TT_LPAREN:
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end,
+                    f"Expected '('"
+                ))
+
+            method = True
 
         if self.current_tok.type == TT_LPAREN:
             res.register_advancement()
@@ -777,7 +833,8 @@ class Parser:
 
                 res.register_advancement()
                 self.advance()
-            return res.success(CallNode(atom, arg_nodes))
+            if method == False: return res.success(CallNode(atom, arg_nodes))
+            else: return res.success(MethodCallNode(atom, identifier, arg_nodes))
         return res.success(atom)
 
     def array_expr(self):
@@ -1398,6 +1455,90 @@ class Array(Value):
     def __repr__(self):
         return f'[{", ".join([str(x) for x in self.elements])}]'
 
+class File(Value):
+    def __init__(self):
+        super().__init__()
+
+    def copy(self):
+        copy = File(self.location)
+        copy.set_pos(self.pos_start, self.pos_end)
+        copy.set_context(self.context)
+        return copy
+
+    def execute_open(self, location, exec_ctx):
+        res = RTResult()
+
+        self.location = location
+        self.process = None
+        
+        # total_lines_temp = open(self.location, "r")
+        # self.total_lines = len(total_lines_temp.readlines())
+        # total_lines_temp.close()
+        # del total_lines_temp
+
+        # try:
+        #     self.value = open(self.location, "r+")
+        # except FileNotFoundError:
+        #     self.value = res.register(open(self.location, "x"))
+        #     if res.error: return res
+
+        return self, None
+
+    def execute_readline(self, exec_ctx):
+        if self.process == None or self.process == 2:
+            print(self.process)
+            try:
+                self.lines = self.lines
+            except AttributeError:
+                print("Attribute Error")
+                self.lines = self.value.readlines()
+                self.total_lines = len(self.lines)
+                self.current_line = 0
+            self.process = 2
+            res = RTResult()
+            if self.current_line < self.total_lines:
+                line = self.lines[self.current_line].strip("\n")
+                self.current_line += 1
+                print(line, flush=True) ## TODO remove
+                return res.success(Number.null)
+            return res.failure(RTError(
+                self.pos_start, self.pos_end,
+                "Exceeded total lines in file",
+                exec_ctx
+            ))
+        return res.failure(RTError(
+                self.pos_start, self.pos_end,
+                "Cannot read to a write file",
+                exec_ctx
+            ))
+
+    def execute_close(self, exec_ctx):
+        self.value.close()
+        self.location=None
+        self.current_line=None
+        self.total_lines=None
+        return RTResult().success(Number.null)
+
+    def execute_writeline(self, arg, exec_ctx):
+        res = RTResult()
+        if self.process == None or self.process == 1:
+            self.process = 1
+            try:
+                self.value.write(str(arg)) # +"\n"
+                self.value.flush()
+                return res.success(Number.null)
+            except:
+                return res.failure(RTError(
+                    self.pos_start, self.pos_end,
+                    "Unable to write to file",
+                    exec_ctx
+                ))
+        return res.failure(RTError(
+                self.pos_start, self.pos_end,
+                "Cannot write to a read file",
+                exec_ctx
+            ))
+
 class BaseFunction(Value):
     def __init__(self, name):
         super().__init__()
@@ -1482,7 +1623,7 @@ class BuiltInFunction(BaseFunction):
         res.register(self.check_and_populate_args(method.arg_names, args, exec_ctx))
         if res.error: return res
 
-        return_value = res.register(method(exec_ctx))
+        return_value =  res.register(method(exec_ctx))
         if res.error: return res
         return res.success(return_value)
 
@@ -1497,11 +1638,10 @@ class BuiltInFunction(BaseFunction):
 
     def __repr__(self):
         return f"<built-in function> {self.name}"
-        
 
     ###################################
 
-    def execute_print(self, exec_ctx):
+    def execute_print(self, exec_ctx): 
         print(str(exec_ctx.symbol_table.get('value')))
         return RTResult().success(Number.null)
     execute_print.arg_names = ['value']
@@ -1640,7 +1780,7 @@ class BuiltInFunction(BaseFunction):
                 f"Unable to cast {value} to and int",
                 exec_ctx
             ))
-        return RTResult().success(new_int)
+        return RTResult().success(Number(new_int))
     execute_int.arg_names = ["value"]
 
     def execute_real(self, exec_ctx):
@@ -1660,7 +1800,7 @@ class BuiltInFunction(BaseFunction):
                 f"Unable to cast {value} to and real",
                 exec_ctx
             ))
-        return RTResult().success(new_real)
+        return RTResult().success(Number(new_real))
     execute_real.arg_names = ["value"]
 
     def execute_bool(self, exec_ctx):
@@ -1673,15 +1813,98 @@ class BuiltInFunction(BaseFunction):
                 exec_ctx
             ))
         try:
-            new_bool = int(eval(value))
+            new_bool = int(eval(value.value))
         except ValueError:
             return RTResult().failure(RTError(
                 self.pos_start, self.pos_end,
                 f"Unable to cast {value} to and bool",
                 exec_ctx
             ))
-        return RTResult().success(new_bool)
+        return RTResult().success(Number(new_bool))
     execute_bool.arg_names = ["value"]
+
+# class BuiltInMethods(BaseFunction):
+#     def __init__(self, name):
+#         super().__init__(name)
+
+#     def execute(self, args):
+#         res = RTResult()
+#         exec_ctx = self.generate_new_context()
+
+#         method_name = f'execute_{self.name}'
+#         method = getattr(self, method_name, self.no_visit_method)
+
+#         res.register(self.check_and_populate_args(method.arg_names, args, exec_ctx))
+#         if res.error: return res
+
+#         return_value = res.register(method(exec_ctx))
+#         if res.error: return res
+#         return res.success(return_value)
+
+#     def no_visit_method(self, node, context):
+#         raise Exception(f'No execute_{self.name} method defined')
+
+#     def copy(self):
+#         copy = BuiltInFunction(self.name)
+#         copy.set_context(self.context)
+#         copy.set_pos(self.pos_start, self.pos_end)
+#         return copy
+
+#     def __repr__(self):
+#         return f"<built-in method> {self.name}"
+
+#     ###################################
+# # def execute_length(self, exec_ctx):
+    def execute_length(self, exec_ctx):
+        string = exec_ctx.symbol_table.get("string")
+
+        if not isinstance(string, String):
+            return RTResult().failure(RTError(
+                self.pos_start, self.pos_end,
+                "This method can only be ran on strings",
+                exec_ctx
+            ))
+
+        return RTResult().success(Number(len(string.value)))
+    execute_length.arg_names = ["string"]
+
+    def execute_open(self, exec_ctx):
+        location = exec_ctx.symbol_table.get("location")
+        return_file = File()
+        return_value = return_file.execute_open(location.value, exec_ctx)
+        if return_value[1]:
+            return RTResult().failure(RTError(
+                self.pos_start, self.pos_end,
+                "There was an unexpected error opening this file",
+                exec_ctx
+            ))
+        return RTResult().success(Number(return_value[0]))
+    execute_open.arg_names = ["location"]
+
+    def execute_write(self, exec_ctx):
+        file = exec_ctx.symbol_table.get("file")
+        string = exec_ctx.symbol_table.get("string")
+        if not isinstance(file, File):
+            return RTResult().failure(RTError(
+                self.pos_start, self.pos_end,
+                "This method can only be ran on files",
+                exec_ctx
+            ))
+        file.execute_writeline(string, exec_ctx)
+        return RTResult().success(Number.null)
+    execute_write.arg_names = ["file", "string"]
+
+    def execute_read(self, exec_ctx):
+        file = exec_ctx.symbol_table.get("file")
+        if not isinstance(file, File):
+            return RTResult.failure(RTError(
+                self.pos_start, self.pos_end,
+                "This method can only be ran on files",
+                exec_ctx
+            ))
+        file.execute_readline(exec_ctx)
+        return RTResult().success(Number.null)
+    execute_read.arg_names = ["file"]
 
 BuiltInFunction.print       = BuiltInFunction("print")
 BuiltInFunction.print_ret   = BuiltInFunction("print_ret")
@@ -1698,6 +1921,10 @@ BuiltInFunction.str         = BuiltInFunction("str")
 BuiltInFunction.int         = BuiltInFunction("int")
 BuiltInFunction.real        = BuiltInFunction("real")
 BuiltInFunction.bool        = BuiltInFunction("bool")
+BuiltInFunction.length      = BuiltInFunction("length")
+BuiltInFunction.open        = BuiltInFunction("open")
+BuiltInFunction.write       = BuiltInFunction("write")
+BuiltInFunction.read        = BuiltInFunction("read")
 
 #######################################
 # CONTEXT
@@ -1968,6 +2195,39 @@ class Interpreter:
         return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
         return res.success(return_value)
 
+    def visit_MethodCallNode(self, node, context):
+        res = RTResult()
+        args = []
+
+        atom = res.register(self.visit(node.type, context))
+        if res.error: return res
+        atom = atom.copy().set_pos(node.pos_start, node.pos_end)
+
+        value_to_call = res.register(self.visit(node.node_to_call, context))
+        if res.error: return res
+        value_to_call = value_to_call.copy().set_pos(node.pos_start, node.pos_end)
+
+        for arg_node in node.arg_nodes:
+            args.append(res.register(self.visit(arg_node, context)))
+            if res.error: return res
+
+        if args: 
+            temp = [atom]
+            temp.extend(args)
+            args = temp.copy()
+        else: args = [atom]
+
+        return_value = res.register(value_to_call.execute(args))
+        if res.error: return res
+
+        return_value = return_value.copy().set_pos(node.pos_start, node.pos_end).set_context(context)
+        return res.success(return_value)
+
+    def visit_FileNode(self, node, context):
+        return RTResult().success(
+            File(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
+        )
+
 #######################################
 # RUN
 #######################################
@@ -1993,6 +2253,10 @@ global_symbol_table.set("str", BuiltInFunction.str)
 global_symbol_table.set("int", BuiltInFunction.int)
 global_symbol_table.set("real", BuiltInFunction.real)
 global_symbol_table.set("bool", BuiltInFunction.bool)
+global_symbol_table.set("length", BuiltInFunction.length)
+global_symbol_table.set("open", BuiltInFunction.open)
+global_symbol_table.set("writeLine", BuiltInFunction.write)
+global_symbol_table.set("readLine", BuiltInFunction.read)
 
 def run(fn, text):
     if len(text) == 0:
@@ -2015,3 +2279,7 @@ def run(fn, text):
     result = interpreter.visit(ast.node, context)
 
     return result.value, result.error
+
+if __name__ == "__main__":
+    import shell
+    shell.run()
