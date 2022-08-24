@@ -1456,8 +1456,10 @@ class Array(Value):
         return f'[{", ".join([str(x) for x in self.elements])}]'
 
 class File(Value):
-    def __init__(self):
+    def __init__(self, location):
         super().__init__()
+        self.current_line = 0
+        self.location = location
 
     def copy(self):
         copy = File(self.location)
@@ -1466,78 +1468,46 @@ class File(Value):
         return copy
 
     def execute_open(self, location, exec_ctx):
-        res = RTResult()
-
+        self.current_line = 0
         self.location = location
-        self.process = None
-        
-        # total_lines_temp = open(self.location, "r")
-        # self.total_lines = len(total_lines_temp.readlines())
-        # total_lines_temp.close()
-        # del total_lines_temp
-
-        # try:
-        #     self.value = open(self.location, "r+")
-        # except FileNotFoundError:
-        #     self.value = res.register(open(self.location, "x"))
-        #     if res.error: return res
 
         return self, None
 
     def execute_readline(self, exec_ctx):
-        if self.process == None or self.process == 2:
-            print(self.process)
-            try:
-                self.lines = self.lines
-            except AttributeError:
-                print("Attribute Error")
-                self.lines = self.value.readlines()
-                self.total_lines = len(self.lines)
-                self.current_line = 0
-            self.process = 2
-            res = RTResult()
-            if self.current_line < self.total_lines:
-                line = self.lines[self.current_line].strip("\n")
-                self.current_line += 1
-                print(line, flush=True) ## TODO remove
-                return res.success(Number.null)
+        res = RTResult()
+
+        try:
+            f = open(self.location, "r")
+            content = f.readlines()
+            f.close()
+            return RTResult().success(String(content[self.current_line]))
+        except:
             return res.failure(RTError(
                 self.pos_start, self.pos_end,
-                "Exceeded total lines in file",
+                "Unable to write to file",
                 exec_ctx
             ))
-        return res.failure(RTError(
-                self.pos_start, self.pos_end,
-                "Cannot read to a write file",
-                exec_ctx
-            ))
-
-    def execute_close(self, exec_ctx):
-        self.value.close()
-        self.location=None
-        self.current_line=None
-        self.total_lines=None
-        return RTResult().success(Number.null)
 
     def execute_writeline(self, arg, exec_ctx):
         res = RTResult()
-        if self.process == None or self.process == 1:
-            self.process = 1
-            try:
-                self.value.write(str(arg)) # +"\n"
-                self.value.flush()
-                return res.success(Number.null)
-            except:
-                return res.failure(RTError(
-                    self.pos_start, self.pos_end,
-                    "Unable to write to file",
-                    exec_ctx
-                ))
-        return res.failure(RTError(
+
+        try:
+            f = open(self.location, "a")
+            f.write(f"\n{str(arg)}")
+            f.close()
+        except:
+            return res.failure(RTError(
                 self.pos_start, self.pos_end,
-                "Cannot write to a read file",
+                "Unable to write to file",
                 exec_ctx
             ))
+
+    def execute_endOfFile(self, exec_ctx):
+        pass
+
+    def execute_close(self, exec_ctx):
+        del self
+        return RTResult().success(Number.null)
 
 class BaseFunction(Value):
     def __init__(self, name):
@@ -1870,7 +1840,7 @@ class BuiltInFunction(BaseFunction):
 
     def execute_open(self, exec_ctx):
         location = exec_ctx.symbol_table.get("location")
-        return_file = File()
+        return_file = File(location)
         return_value = return_file.execute_open(location.value, exec_ctx)
         if return_value[1]:
             return RTResult().failure(RTError(
@@ -1878,7 +1848,7 @@ class BuiltInFunction(BaseFunction):
                 "There was an unexpected error opening this file",
                 exec_ctx
             ))
-        return RTResult().success(Number(return_value[0]))
+        return RTResult().success(return_value[0])
     execute_open.arg_names = ["location"]
 
     def execute_write(self, exec_ctx):
@@ -1906,6 +1876,18 @@ class BuiltInFunction(BaseFunction):
         return RTResult().success(Number.null)
     execute_read.arg_names = ["file"]
 
+    def execute_close(self, exec_ctx):
+        file = exec_ctx.symbol_table.get("file")
+        if not isinstance(file, File):
+            return RTResult.failure(RTError(
+                self.pos_start, self.pos_end,
+                "This method can only be ran on files",
+                exec_ctx
+            ))
+        file.execute_close(exec_ctx)
+        return RTResult().success(Number.null)
+    execute_close.arg_names = ["file"]
+
 BuiltInFunction.print       = BuiltInFunction("print")
 BuiltInFunction.print_ret   = BuiltInFunction("print_ret")
 BuiltInFunction.input       = BuiltInFunction("input")
@@ -1925,6 +1907,7 @@ BuiltInFunction.length      = BuiltInFunction("length")
 BuiltInFunction.open        = BuiltInFunction("open")
 BuiltInFunction.write       = BuiltInFunction("write")
 BuiltInFunction.read        = BuiltInFunction("read")
+BuiltInFunction.close       = BuiltInFunction("close")
 
 #######################################
 # CONTEXT
@@ -2257,6 +2240,7 @@ global_symbol_table.set("length", BuiltInFunction.length)
 global_symbol_table.set("open", BuiltInFunction.open)
 global_symbol_table.set("writeLine", BuiltInFunction.write)
 global_symbol_table.set("readLine", BuiltInFunction.read)
+global_symbol_table.set("close", BuiltInFunction.close)
 
 def run(fn, text):
     if len(text) == 0:
