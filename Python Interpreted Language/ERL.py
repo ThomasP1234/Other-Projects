@@ -1456,19 +1456,19 @@ class Array(Value):
         return f'[{", ".join([str(x) for x in self.elements])}]'
 
 class File(Value):
-    def __init__(self, location):
+    def __init__(self, location, current_line):
         super().__init__()
-        self.current_line = 0
         self.location = location
+        self.current_line = current_line
 
     def copy(self):
-        copy = File(self.location)
+        copy = File(self.location, self.current_line)
         copy.set_pos(self.pos_start, self.pos_end)
         copy.set_context(self.context)
         return copy
 
     def execute_open(self, location, exec_ctx):
-        self.current_line = 0
+        self.current_line = -1
         self.location = location
 
         return self, None
@@ -1477,14 +1477,16 @@ class File(Value):
         res = RTResult()
 
         try:
+            self.current_line += 1
             f = open(self.location, "r")
             content = f.readlines()
             f.close()
-            return RTResult().success(String(content[self.current_line]))
-        except:
+            return content[self.current_line]
+        except Exception as e:
+            print(f"exception: {e}")
             return res.failure(RTError(
                 self.pos_start, self.pos_end,
-                "Unable to write to file",
+                "Unable to read to file",
                 exec_ctx
             ))
 
@@ -1840,7 +1842,7 @@ class BuiltInFunction(BaseFunction):
 
     def execute_open(self, exec_ctx):
         location = exec_ctx.symbol_table.get("location")
-        return_file = File(location)
+        return_file = File(location, -1)
         return_value = return_file.execute_open(location.value, exec_ctx)
         if return_value[1]:
             return RTResult().failure(RTError(
@@ -1872,8 +1874,10 @@ class BuiltInFunction(BaseFunction):
                 "This method can only be ran on files",
                 exec_ctx
             ))
-        file.execute_readline(exec_ctx)
-        return RTResult().success(Number.null)
+        value = file.execute_readline(exec_ctx)
+        value = String(value)
+        exec_ctx.symbol_table.set("file", file)
+        return RTResult().success(value)
     execute_read.arg_names = ["file"]
 
     def execute_close(self, exec_ctx):

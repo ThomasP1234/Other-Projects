@@ -8,10 +8,33 @@ from console import Console
 
 class IDEShell:
     def __init__(self, root):
-        self.master = root
+        self.master = Toplevel(root)
+        self.window_config()
+
+    def window_config(self):
+        self.width = 800
+        self.height = 800
         self.background_colour = "#F0F0F0"
         self.default_font = "Helvetica"
+
+        self.master.wm_title("ERL IDE")
+        self.master.wm_iconbitmap("icon.ico")
+        self.master.geometry(f"{self.width}x{self.height}+100+100")
+        self.master.resizable(True, True)
+        self.master.configure(background=self.background_colour)
+
+        self.create_sizegrip()
         self.draw()
+
+    def create_sizegrip(self):
+        self.master.columnconfigure(0, weight=1)
+        # self.master.rowconfigure(0, weight=1)
+        self.master.rowconfigure(1, weight=1)
+        self.master.rowconfigure(2, weight=1)
+
+        my_sizegrip = ttk.Sizegrip(self.master)
+        my_sizegrip.grid(row=2, sticky="SE")
+        # my_sizegrip.pack(side="right", anchor="se")
 
     def draw(self):
         code_label = LabelFrame(self.master, font=(self.default_font, 10), text="Shell")
@@ -86,41 +109,12 @@ class Window(Frame):
             exit()
 
 class IDEEditor:
-    def __init__(self, root):
-        self.root = root
-        self.background_colour = "#F0F0F0"
-        self.default_font = "Helvetica"
-        self.draw()
-        
-    def draw(self):
-        self.code_draw()
-        self.output_draw()
-
-    def code_draw(self):
-        code_label = LabelFrame(self.root, font=(self.default_font, 10), text="Code")
-        code_label.grid(row = 0, column = 0, sticky="nsew", padx=10, pady=10)
-
-        code_label.columnconfigure(0, weight=1)
-        code_label.rowconfigure(0, weight=1)
-
-        code_widget = Text(code_label, bg="white", font=(self.default_font, 10))
-        code_widget.grid(row = 0, column = 0, sticky="nsew", padx=10, pady=10)
-        
-    def output_draw(self):
-        output_label = LabelFrame(self.root, font=(self.default_font, 10), text="Output")
-        output_label.grid(row = 1, column = 0, sticky="nsew", padx=10, pady=10)
-
-        output_label.columnconfigure(0, weight=1)
-        output_label.rowconfigure(0, weight=1)
-
-        output_widget = Text(output_label, bg="white", font=(self.default_font, 10))
-        output_widget.grid(row = 0, column = 0, sticky="nsew", padx=10, pady=10)
-
-class IDEMain:
     def __init__(self):
         self.root = Tk()
         self.app = Window(self.root)
         self.window_config()
+        self.output = False
+        self.output_items = []
 
     def window_config(self):
         self.width = 800
@@ -135,7 +129,6 @@ class IDEMain:
         self.root.configure(background=self.background_colour)
 
         self.root.bind("<F5>", self.app.runButton)
-        self.root.bind("<Escape>", lambda x: self.on_close())
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.create_sizegrip()
@@ -154,18 +147,37 @@ class IDEMain:
         self.app.exitButton()
 
     def draw(self):
-        tabControl = ttk.Notebook(self.root)
-        self.tabEDIT = ttk.Frame(tabControl)
-        self.tabSHELL = ttk.Frame(tabControl)
-        self.editor = IDEEditor(self.tabEDIT)
-        self.shell = IDEShell(self.tabSHELL)
-        tabControl.add(self.tabEDIT, text='Editor')
-        tabControl.add(self.tabSHELL, text='Shell')
-        tabControl.grid(row = 0, column = 0)
+        title = Label(self.root, font=(self.default_font, 25), text="ERL IDE")
+        title.grid(row = 0, column = 0, sticky="nsew")
+
+        self.code_draw()
+        self.output_draw()
+
+    def code_draw(self):
+        code_label = LabelFrame(self.root, font=(self.default_font, 10), text="Code")
+        code_label.grid(row = 1, column = 0, sticky="nsew", padx=10, pady=10)
+
+        code_label.columnconfigure(0, weight=1)
+        code_label.rowconfigure(0, weight=1)
+
+        code_widget = Text(code_label, bg="white", font=(self.default_font, 10))
+        code_widget.grid(row = 0, column = 0, sticky="nsew", padx=10, pady=10)
+        
+    def output_draw(self):
+        output_label = LabelFrame(self.root, font=(self.default_font, 10), text="Output")
+        output_label.grid(row = 2, column = 0, sticky="nsew", padx=10, pady=10)
+
+        output_label.columnconfigure(0, weight=1)
+        output_label.rowconfigure(0, weight=1)
+
+        output_widget = Text(output_label, bg="white", font=(self.default_font, 10))
+        output_widget.grid(row = 0, column = 0, sticky="nsew", padx=10, pady=10)
+
+        self.output_items.extend([output_label, output_widget])
 
     def run(self):
         self.draw()
         self.root.mainloop()
 
-ide = IDEMain()
+ide = IDEEditor()
 ide.run()
