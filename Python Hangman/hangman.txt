@@ -1,0 +1,104 @@
+Arithmetic Logic Unit
+Control Unit
+Registers
+Memory Address Register
+Memory Data Register
+Accumulator
+Program Counter
+Fetch Decode Execute
+Embedded System
+Volatile
+Non-Volatile
+Central Processing Unit
+Virtual Memory
+Graphics Processing Unit
+Optical Storage
+Magnetic Storage
+Solid State Storage
+Cloud Storage
+Operating System
+Command-line Interface
+Graphical User Interface
+Utility Software
+Full Backup
+Incremental Backup
+Compression Software
+Encryption Software
+Open Source
+Proprietary
+Local Area Network
+Wide Area Network
+Bandwidth
+Network Interface Card
+Switch
+Hub
+Router
+Ethernet
+Client-Server Network
+Peer-to-Peer Network
+Star Topology
+Mesh Topology
+MAC Address
+IP Address
+Packet Switching
+TCP/IP Stack
+Application Layer
+Transport Layer
+Network Layer
+Datalink Layer
+Domain Name Server
+Virtual Network
+Phishing
+Malware
+Virus
+Worm
+Trojan Horse
+Spyware
+Adware
+Brute Force Attack
+Denial of Service Attack
+SQL Injection
+Anti-malware Software
+Encryption
+Data Protection Act
+Computer Misuse Act
+Copyright Designs and Patent Act
+Cache
+Cores
+Fibre Optic Cable
+Wi-fi
+Uniform Resource Locator
+Variable
+Data Type
+Function
+Procedure
+Subprogram
+Global Scope
+Local Scope
+Concatenation
+Iteration
+Selection
+Sequence
+Argument
+Paramter
+Abstraction
+Array
+Casting
+Decomposition
+Linear Search
+Binary Search
+Bubble Sort
+Insertion Sort
+Merge Sort
+Syntax Error
+Logic Error
+Normal Data
+Boundary Data
+Erroneous Data
+Logic Gate
+High-level Language
+Low-level Language
+Translator
+Compiler
+Interpreter
+Intergrated Development Environment
