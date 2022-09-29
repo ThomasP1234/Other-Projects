@@ -1,6 +1,4 @@
-from cgitb import reset
 from tkinter import *
-from tkinter.ttk import Sizegrip, Style
 import random
 
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -20,7 +18,6 @@ class Hangman():
         initHeight = "432"
 
         self.root = Tk()
-        # self.root.geometry(f"{initWidth}x{initHeight}+{}+{}")
         self.root.title("Hangman")
         self.root.configure(background=BACKGROUND)
 
@@ -32,9 +29,6 @@ class Hangman():
         self.root.geometry(f"{initWidth}x{initHeight}+{initX}+{initY}")
 
         self.root.bind("<KeyPress>", self.keyPress)
-        
-        # self.style = Style(self.root)
-        # self.style.configure('Sizegrip', background=BACKGROUND)
 
         self.gameLogic()
         self.window()
@@ -45,6 +39,7 @@ class Hangman():
         answers = answersStr.split('\n')
         self.answer = random.choice(answers)
         self.answerUppercase = self.answer.upper()
+        file.close()
 
         self.solutionLetters = []
         for letter in self.answerUppercase:
@@ -62,22 +57,17 @@ class Hangman():
         self.livesLeft = 10
 
     def window(self):
-        # self.createSizegrip()
-
         titleFrame = Frame(self.root, bg=BACKGROUND)
-        # titleFrame.grid(row=0, column=0)
         titleFrame.pack(expand=True, fill="x")
         title = Label(titleFrame, text="Hangman", font=(DEFAULT_FONT, "80"), bg=BACKGROUND, fg=WHITE)
         title.pack()
 
         puzzleFrame = Frame(self.root, bg=BACKGROUND)
-        # puzzleFrame.grid(row=1,column=0)
         puzzleFrame.pack(expand=True, fill="x")
         self.puzzleTitle = Label(puzzleFrame, text=f"{self.puzzle}", font=(DEFAULT_FONT, "50"), bg=BACKGROUND, fg=WHITE)
         self.puzzleTitle.pack()
 
-        gameFrame = Frame(self.root, bg=LIGHT_GREY)
-        # gameFrame.grid(row=2, column=0)
+        gameFrame = Frame(self.root, bg=BACKGROUND)
         gameFrame.pack(expand=True, fill="both")
         gameFrame.columnconfigure(0, weight=1)
         gameFrame.columnconfigure(1, weight=1)
@@ -96,8 +86,8 @@ class Hangman():
         self.letterButtons = {}
         for letter in LETTERS:
             btn = Button(letterFrame, height=3, width=3,
-                                text=f"{letter}", font=(DEFAULT_FONT, 20), 
-                                background=BACKGROUND, foreground=WHITE, 
+                                text=f"{letter}", font=(DEFAULT_FONT, 20),
+                                background=BACKGROUND, foreground=WHITE,
                                 highlightbackground=LIGHT_GREY, highlightcolor=WHITE,
                                 activebackground=GREY, activeforeground=WHITE,
                                 bd=2, relief=FLAT
@@ -112,8 +102,8 @@ class Hangman():
                 column = 0
 
         reset = Button(letterFrame, height=3, width=3,
-                                text="↻", font=(DEFAULT_FONT, 20), 
-                                background=BACKGROUND, foreground=WHITE, 
+                                text="↻", font=(DEFAULT_FONT, 20),
+                                background=BACKGROUND, foreground=WHITE,
                                 highlightbackground=LIGHT_GREY, highlightcolor=WHITE,
                                 activebackground=GREY, activeforeground=WHITE,
                                 bd=2, relief=FLAT, command = self.reset
@@ -121,8 +111,8 @@ class Hangman():
         reset.grid(row=row, column=column)
         column+=1
         exit = Button(letterFrame, height=3, width=3,
-                                text="␛", font=(DEFAULT_FONT, 20), 
-                                background=BACKGROUND, foreground=WHITE, 
+                                text="␛", font=(DEFAULT_FONT, 20),
+                                background=BACKGROUND, foreground=WHITE,
                                 highlightbackground=LIGHT_GREY, highlightcolor=WHITE,
                                 activebackground=GREY, activeforeground=WHITE,
                                 bd=2, relief=FLAT, command = self.root.destroy
@@ -137,16 +127,6 @@ class Hangman():
 
         self.livesTitle = Label(infoFrame, text=f"Lives: {self.livesLeft}", font=(DEFAULT_FONT, "30"), bg=BACKGROUND, fg=WHITE)
         self.livesTitle.pack()
-
-    # def createSizegrip(self):
-        # self.root.columnconfigure(0, weight=1)
-        # self.root.columnconfigure(1, weight=0)
-        # self.root.rowconfigure(0, weight=0)
-        # self.root.rowconfigure(1, weight=0)
-        # self.root.rowconfigure(2, weight=1)
-
-        # my_sizegrip = Sizegrip(self.root)
-        # my_sizegrip.grid(row=2, sticky="SE")
 
     def updatePuzzleString(self):
         puzzle = ""
@@ -169,7 +149,7 @@ class Hangman():
             self.validGuesses.append(letter)
             self.updatePuzzleString()
             self.puzzleTitle.configure(text=self.puzzle)
-    
+   
         else:
             button.configure(bg = RED)
             self.invalidGuesses.append(letter)
@@ -187,7 +167,7 @@ class Hangman():
             self.updatePuzzleString()
             self.puzzleTitle.configure(text=self.puzzle)
             self.puzzleTitle.configure(fg=RED)
-            
+           
     def disableAllButtons(self):
         for letter in LETTERS:
             button = self.letterButtons[letter]
