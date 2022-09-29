@@ -1,0 +1,5 @@
+Syntax Error
+Logic Error
+Normal Data
+Boundary Data
+Erroneous Data

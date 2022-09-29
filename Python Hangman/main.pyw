@@ -1,6 +1,18 @@
+# *************************************************************************************************
+#
+#   Made by Thomas Preston (September 2022)
+#
+#   To add more words to the program. Add them as a new line in the chosen category in resources
+#   or add a new category to the CATEGORIES constant below and then create a txt file in resources
+#   with the same name and put new words in there.
+#
+# *************************************************************************************************
+
+# Includes
 from tkinter import *
 import random
 
+# Constants
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 DEFAULT_FONT = "Berlin Sans FB"
@@ -12,9 +24,16 @@ GREY = "#505050"
 GREEN = "#009E2F"
 RED = "#E62937"
 
+CATEGORIES = ["Algorithms", "Computer Law",
+              "CPU", "Error Checking",
+              "Malware", "Network",
+              "Programming", "Storage Types",
+              "Translators", "Utility Software"]
+
+# Game Class
 class Hangman():
     def __init__(self):
-        initWidth = "768"
+        initWidth = "900"
         initHeight = "432"
 
         self.root = Tk()
@@ -34,7 +53,9 @@ class Hangman():
         self.window()
 
     def gameLogic(self):
-        file = open("Hangman.txt")
+        self.category = random.choice(CATEGORIES)
+        file = open(f"Resources\\{self.category}.txt")
+
         answersStr = file.read()
         answers = answersStr.split('\n')
         self.answer = random.choice(answers)
@@ -128,6 +149,9 @@ class Hangman():
         self.livesTitle = Label(infoFrame, text=f"Lives: {self.livesLeft}", font=(DEFAULT_FONT, "30"), bg=BACKGROUND, fg=WHITE)
         self.livesTitle.pack()
 
+        self.categoryTitle = Label(infoFrame, text=f"Category: {self.category}", font=(DEFAULT_FONT, "30"), bg=BACKGROUND, fg=WHITE)
+        self.categoryTitle.pack()
+
     def updatePuzzleString(self):
         puzzle = ""
 
@@ -141,32 +165,33 @@ class Hangman():
 
     def processGuess(self, letter):
         button = self.letterButtons[letter]
-        button["state"] = DISABLED
-        button.configure(fg = GREY)
+        if button["state"] != DISABLED:
+            button["state"] = DISABLED
+            button.configure(fg = GREY)
 
-        if letter in self.solutionLetters:
-            button.configure(bg = GREEN)
-            self.validGuesses.append(letter)
-            self.updatePuzzleString()
-            self.puzzleTitle.configure(text=self.puzzle)
-   
-        else:
-            button.configure(bg = RED)
-            self.invalidGuesses.append(letter)
-            self.livesLeft-=1
-            self.badGuessesTitle.configure(text=self.badGuessesTitle.cget('text')+letter)
-            self.livesTitle.configure(text=f"Lives: {self.livesLeft}")
+            if letter in self.solutionLetters: # Correct Guess
+                button.configure(bg = GREEN)
+                self.validGuesses.append(letter)
+                self.updatePuzzleString()
+                self.puzzleTitle.configure(text=self.puzzle)
+    
+            else: # Incorrect Guess
+                button.configure(bg = RED)
+                self.invalidGuesses.append(letter)
+                self.livesLeft-=1
+                self.badGuessesTitle.configure(text=self.badGuessesTitle.cget('text')+letter)
+                self.livesTitle.configure(text=f"Lives: {self.livesLeft}")
 
-        if len(self.validGuesses) == self.solutionLettersSize:
-            self.disableAllButtons()
-            self.puzzleTitle.configure(fg=GREEN)
+            if len(self.validGuesses) == self.solutionLettersSize: # Win condition
+                self.disableAllButtons()
+                self.puzzleTitle.configure(fg=GREEN)
 
-        elif self.livesLeft == 0:
-            self.disableAllButtons()
-            self.validGuesses = self.solutionLetters
-            self.updatePuzzleString()
-            self.puzzleTitle.configure(text=self.puzzle)
-            self.puzzleTitle.configure(fg=RED)
+            elif self.livesLeft == 0: # Loose Condition
+                self.disableAllButtons()
+                self.validGuesses = self.solutionLetters
+                self.updatePuzzleString()
+                self.puzzleTitle.configure(text=self.puzzle)
+                self.puzzleTitle.configure(fg=RED)
            
     def disableAllButtons(self):
         for letter in LETTERS:
@@ -186,10 +211,13 @@ class Hangman():
         self.puzzleTitle.configure(fg=WHITE)
         self.badGuessesTitle.configure(text="Bad Guesses:\n")
         self.livesTitle.configure(text=f"Lives: {self.livesLeft}")
+        self.categoryTitle.configure(text=f"Category: {self.category}")
 
     def keyPress(self, event):
         if event.keysym == 'Escape':
             self.root.destroy()
+        if event.keysym.upper() in LETTERS:
+            self.processGuess(event.keysym.upper())
 
     def gameloop(self):
         self.root.mainloop()

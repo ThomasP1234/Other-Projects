@@ -1,0 +1,6 @@
+High-level Language
+Low-level Language
+Translator
+Compiler
+Interpreter
+Intergrated Development Environment

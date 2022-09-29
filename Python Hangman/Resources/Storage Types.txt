@@ -1,0 +1,10 @@
+Optical Storage
+Magnetic Storage
+Solid State Storage
+Cloud Storage
+Cost Per MB
+Reliability
+Durability
+Portability
+Capacity
+Read/Write Speed

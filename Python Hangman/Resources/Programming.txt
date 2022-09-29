@@ -1,0 +1,17 @@
+Variable
+Data Type
+Function
+Procedure
+Subprogram
+Global Scope
+Local Scope
+Concatenation
+Iteration
+Selection
+Sequence
+Argument
+Paramter
+Abstraction
+Array
+Casting
+Decomposition

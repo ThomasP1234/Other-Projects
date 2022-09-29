@@ -1,0 +1,14 @@
+Arithmetic Logic Unit
+Control Unit
+Registers
+Memory Address Register
+Memory Data Register
+Accumulator
+Program Counter
+Fetch Decode Execute
+Volatile
+Non-Volatile
+Central Processing Unit
+Virtual Memory
+Cache
+Cores
