@@ -151,7 +151,10 @@ class IDEMain:
         # my_sizegrip.pack(side="right", anchor="se")
 
     def on_close(self):
-        self.app.exitButton()
+        response = messagebox.askyesno('Exit', 'Are you sure you want to exit\nAny unsaved changes will be lost')
+        if response:
+            self.root.destroy()
+            exit()
 
     def draw(self):
         tabControl = ttk.Notebook(self.root)
@@ -166,6 +169,7 @@ class IDEMain:
     def run(self):
         self.draw()
         self.root.mainloop()
+        self.root.destroy()
 
 ide = IDEMain()
 ide.run()

@@ -2,6 +2,7 @@
 # IMPORTS
 #######################################
 
+from genericpath import isfile
 from numpy import number
 
 
@@ -20,9 +21,13 @@ except ImportError as error:
 try:
     from os import system as system
     from os import name as osname
+    from os.path import isfile
+    from os.path import exists
+    from os import remove as removefile
+    from os import removedirs as removefolder
 except ImportError as error:
     print(f"'{error.__class__.__name__}'")
-    print(f"Unable to find module: 'os.system' and 'os.name'")
+    print(f"Unable to find module: 'os.system', 'os.name', 'os.path', 'os.remove', or 'os.removedirs'")
 
 #######################################
 # CONSTANTS
@@ -1475,20 +1480,32 @@ class File(Value):
 
     def execute_readline(self, exec_ctx):
         res = RTResult()
-
+        cache_file = f"./__erl_cache__/{self.location}.txt"
+        if isfile(cache_file) == True:
+            self.current_line = int(open(cache_file, "r").readline())
+        else:
+            self.current_line = 0
         try:
-            self.current_line += 1
             f = open(self.location, "r")
             content = f.readlines()
             f.close()
-            return content[self.current_line]
+            line = content[self.current_line]
+            self.current_line+=1
+            open(cache_file, "w").write(str(self.current_line))
+            return line, None
+        except IndexError as e:
+            return None, RTError(
+                self.pos_start, self.pos_end,
+                "No more lines left in file to read",
+                exec_ctx
+            )
         except Exception as e:
             print(f"exception: {e}")
-            return res.failure(RTError(
+            return None, RTError(
                 self.pos_start, self.pos_end,
                 "Unable to read to file",
                 exec_ctx
-            ))
+            )
 
     def execute_writeline(self, arg, exec_ctx):
         res = RTResult()
@@ -1508,6 +1525,9 @@ class File(Value):
         pass
 
     def execute_close(self, exec_ctx):
+        cache_file = f"./__erl_cache__/{self.location}.txt"
+        if isfile(cache_file) == True:
+            removefile(cache_file)
         del self
         return RTResult().success(Number.null)
 
@@ -1869,15 +1889,16 @@ class BuiltInFunction(BaseFunction):
     def execute_read(self, exec_ctx):
         file = exec_ctx.symbol_table.get("file")
         if not isinstance(file, File):
-            return RTResult.failure(RTError(
+            return RTResult().failure(RTError(
                 self.pos_start, self.pos_end,
                 "This method can only be ran on files",
                 exec_ctx
             ))
-        value = file.execute_readline(exec_ctx)
-        value = String(value)
-        exec_ctx.symbol_table.set("file", file)
-        return RTResult().success(value)
+        output = file.execute_readline(exec_ctx)
+        if type(output[1]) == RTError:
+            error = output[1]
+            return RTResult().failure(error)
+        return RTResult().success(String(output[0]))
     execute_read.arg_names = ["file"]
 
     def execute_close(self, exec_ctx):
@@ -2267,6 +2288,9 @@ def run(fn, text):
     result = interpreter.visit(ast.node, context)
 
     return result.value, result.error
+
+def cleanup():
+    if exists("./__erl_cache__"): removefolder("./__erl_cache__")
 
 if __name__ == "__main__":
     import shell

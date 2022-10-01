@@ -4,6 +4,7 @@
 import ERL
 
 def run():
+    ERL.cleanup()
     while True:
       text = input('ERL >>> ')
       result, error = ERL.run('<stdin>', text)
