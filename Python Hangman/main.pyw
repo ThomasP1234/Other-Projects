@@ -37,7 +37,7 @@ class Hangman():
         initHeight = "432"
 
         self.root = Tk()
-        self.root.title("Hangman")
+        self.root.title("Hangman (By Thomas Preston)")
         self.root.configure(background=BACKGROUND)
 
         screen_width = self.root.winfo_screenwidth()
@@ -49,12 +49,18 @@ class Hangman():
 
         self.root.bind("<KeyPress>", self.keyPress)
 
+        self.category = "Random"
+
         self.gameLogic()
         self.window()
 
     def gameLogic(self):
-        self.category = random.choice(CATEGORIES)
-        file = open(f"Resources\\{self.category}.txt")
+        if self.category == "Random":
+            category = random.choice(CATEGORIES)
+            self.labelCategory = category
+        else:
+            category = self.category
+        file = open(f"Resources\\{category}.txt")
 
         answersStr = file.read()
         answers = answersStr.split('\n')
@@ -131,8 +137,17 @@ class Hangman():
                                 )
         reset.grid(row=row, column=column)
         column+=1
+        categoryChange = Button(letterFrame, height=3, width=3,
+                                text="CAT", font=(DEFAULT_FONT, 20),
+                                background=BACKGROUND, foreground=WHITE,
+                                highlightbackground=LIGHT_GREY, highlightcolor=WHITE,
+                                activebackground=GREY, activeforeground=WHITE,
+                                bd=2, relief=FLAT, command = self.changeCategoryWindow
+                                )
+        categoryChange.grid(row=row, column=column)
+        column+=1
         exit = Button(letterFrame, height=3, width=3,
-                                text="␛", font=(DEFAULT_FONT, 20),
+                                text="ESC", font=(DEFAULT_FONT, 20),
                                 background=BACKGROUND, foreground=WHITE,
                                 highlightbackground=LIGHT_GREY, highlightcolor=WHITE,
                                 activebackground=GREY, activeforeground=WHITE,
@@ -149,8 +164,51 @@ class Hangman():
         self.livesTitle = Label(infoFrame, text=f"Lives: {self.livesLeft}", font=(DEFAULT_FONT, "30"), bg=BACKGROUND, fg=WHITE)
         self.livesTitle.pack()
 
-        self.categoryTitle = Label(infoFrame, text=f"Category: {self.category}", font=(DEFAULT_FONT, "30"), bg=BACKGROUND, fg=WHITE)
+        self.categoryTitle = Label(infoFrame, font=(DEFAULT_FONT, "30"), bg=BACKGROUND, fg=WHITE)
+        if self.category == "Random":
+            self.categoryTitle.configure(text=f"Category: {self.labelCategory}")
+        else:
+            self.categoryTitle.configure(text=f"Category: {self.category}")
         self.categoryTitle.pack()
+
+    def changeCategoryWindow(self):
+        menu = Toplevel(self.root)
+        menu.title("Category Chooser")
+        menuFrame = Frame(menu, bg=BACKGROUND)
+        menuFrame.pack(expand=True, fill="both")
+
+        newCategories = CATEGORIES
+
+        for column in range(0, int(len(newCategories))+1):
+            menuFrame.columnconfigure(column, weight=1)
+        for row in range(0, 5):
+            menuFrame.rowconfigure(row, weight=1)
+
+        row, column = 0, 0
+        for i in range(0, len(newCategories)+1):
+            try:
+                selectedCategory = newCategories[i]
+            except IndexError as e:
+                selectedCategory = "Random"
+            button = Button(menuFrame,
+                                text=f"{selectedCategory}", font=(DEFAULT_FONT, 20),
+                                background=BACKGROUND, foreground=WHITE,
+                                highlightbackground=LIGHT_GREY, highlightcolor=WHITE,
+                                activebackground=GREY, activeforeground=WHITE,
+                                bd=2, relief=FLAT, command = lambda x = menu, y = selectedCategory: self.changeCategory(x, y))
+                               
+            button.grid(row=row, column=column)
+            row += 1
+            if row == 5:
+                row = 0
+                column += 1
+
+        menu.mainloop()
+
+    def changeCategory(self, menu, category):
+        self.category = category
+        menu.destroy()
+        self.reset()
 
     def updatePuzzleString(self):
         puzzle = ""
@@ -174,7 +232,7 @@ class Hangman():
                 self.validGuesses.append(letter)
                 self.updatePuzzleString()
                 self.puzzleTitle.configure(text=self.puzzle)
-    
+   
             else: # Incorrect Guess
                 button.configure(bg = RED)
                 self.invalidGuesses.append(letter)
@@ -211,7 +269,10 @@ class Hangman():
         self.puzzleTitle.configure(fg=WHITE)
         self.badGuessesTitle.configure(text="Bad Guesses:\n")
         self.livesTitle.configure(text=f"Lives: {self.livesLeft}")
-        self.categoryTitle.configure(text=f"Category: {self.category}")
+        if self.category == "Random":
+            self.categoryTitle.configure(text=f"Category: {self.labelCategory}")
+        else:
+            self.categoryTitle.configure(text=f"Category: {self.category}")
 
     def keyPress(self, event):
         if event.keysym == 'Escape':
