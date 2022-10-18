@@ -70,13 +70,13 @@ class Window(Frame):
             label="Run Program",
             command=self.runButton
         )
-        runMenu.add_command(
-            label="Open Shell",
-            command=lambda: IDEShell(self.master)
-        )
+        # runMenu.add_command(
+        #     label="Open Shell",
+        #     command=lambda: IDEShell(self.master)
+        # )
         menu.add_cascade(label="Run", menu=runMenu)
 
-    def runButton(self, event):
+    def runButton(self, event=None):
         print("ran")
 
     def exitButton(self):
