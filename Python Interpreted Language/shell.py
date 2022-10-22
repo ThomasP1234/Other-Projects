@@ -4,6 +4,8 @@
 #       fix syntax, 
 #       add remaining features from file:///D:/Data/Downloads/ocr-exam-reference-language-cheatsheet-poster.pdf
 #       sort all error eg. Syntax Error Code output
+# TODO config file to edit default keybinds (IDE)
+# On finish change to .pyw to hide console
 
 import ERL
 
@@ -12,7 +14,7 @@ def run():
     while True:
       text = input('ERL >>> ')
       if text.strip() == "": continue
-      result, error = ERL.run('<stdin>', text)
+      result, error = ERL.run('<stdin>', text+"\n")
 
       if error: 
         print(error.as_string())

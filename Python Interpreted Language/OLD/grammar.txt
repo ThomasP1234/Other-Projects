@@ -4,7 +4,12 @@ KEY:
 ? means optional
 | means or
 
-statements		: NEWLINE* expr (NEWLINE+ expr)* NEWLINE*
+statements		: NEWLINE* statement (NEWLINE+ statement)* NEWLINE*
+
+statement		: KEYWORD:RETURN expr?
+				: KEYWORD:CONTINUE
+				: KEYWORD:BREAK
+				: expr
 
 expr    		: IDENTIFIER EQ expr
 				: comp-expr ((KEYWORD:AND|KEYWORD:OR) comp-expr)*
@@ -36,27 +41,27 @@ atom 			: INT|FLOAT|STRING|IDENTIFIER
 array-expr		: LSQUARE (expr (COMMA expr)*)? RSQUARE
 
 if-expr			: KEYWORD:if expr KEYWORD:then 
-				  (expr if-expr-b|if-expr-c?)
+				  (statement if-expr-b|if-expr-c?)
 				  | (NEWLINE statements KEYWORD:endif|if-expr-b|if-expr-c)
 
 if-expr-b		: KEYWORD:elif expr KEYWORD:then 
-				  (expr if-expr-b|if-expr-c?)
+				  (statement if-expr-b|if-expr-c?)
 				  | (NEWLINE statements KEYWORD:endif|if-expr-b|if-expr-c)
 
 if-expr-c		: KEYWORD:else
-				  expr
+				  statement
 				  | (NEWLINE statements KEYWORD:endif)
 
 for-expr		: KEYWORD:for IDENTIFIER EQ expr KEYWORD:to expr (KEYWORD:step expr)? 
-				  (KEYWORD:then expr)
+				  (KEYWORD:then statement)
 				  | (NEWLINE statements (KEYWORD:next IDENTIFIER))
 
 while-expr		: KEYWORD:while expr 
-				  (KEYWORD:then expr)
+				  (KEYWORD:then statement)
 				  | (NEWLINE statements KEYWORD:endwhile)
 
 do-while-expr	: KEYWORD:do
-				  (expr KEYWORD:until expr)
+				  (expr KEYWORD:until statement)
 				  | (NEWLINE statements NEWLINE KEYWORD:until expr)
 
 func-def		: KEYWORD:function IDENTIFIER?

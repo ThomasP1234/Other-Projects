@@ -1,6 +1,3 @@
-# TODO config file to edit default keybinds
-# On finish change to .pyw to hide console
-
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox

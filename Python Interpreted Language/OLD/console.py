@@ -91,8 +91,9 @@ class Console(tk.Frame):
 
 
 if __name__ == '__main__':
-
     root = tk.Tk()
+    root.title("Simple console")
+    root.wm_iconbitmap("icon.ico")
     root.config(background="red")
     main_window = Console(root)
     main_window.pack(fill=tk.BOTH,expand=True)

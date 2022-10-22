@@ -179,5 +179,9 @@ class IDEEditor:
         self.draw()
         self.root.mainloop()
 
+    def quit(self):
+        self.root.quit()
+
 ide = IDEEditor()
 ide.run()
+ide.quit()
