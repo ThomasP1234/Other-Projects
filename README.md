@@ -1,1 +1,1 @@
-This repo contains various small projects I have worked on
+This repo contains various small projects I have worked on in python and C++
