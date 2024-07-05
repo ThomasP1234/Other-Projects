@@ -7,6 +7,7 @@ from string_with_arrows import *
 import string
 import os
 import math
+import glob
 
 #######################################
 # CONSTANTS
@@ -79,14 +80,26 @@ class Position:
         self.col = col
         self.fn = fn
         self.ftxt = ftxt
+        self.last_col = 0
 
     def advance(self, current_char=None):
         self.idx += 1
         self.col += 1
 
         if current_char == '\n':
+            self.last_col = self.col
             self.ln += 1
             self.col = 0
+
+        return self
+
+    def reverse(self, current_char=None):
+        self.idx -= 1
+        if self.col == 0:
+            self.ln-=1
+            self.col = self.last_col
+        else:
+            self.col -=1
 
         return self
 
@@ -108,6 +121,7 @@ TT_MUL            	= 'MUL'
 TT_DIV            	= 'DIV'
 TT_POW				= 'POW'
 TT_EQ				= 'EQ'
+TT_DOT              = 'DOT'
 TT_LPAREN     	    = 'LPAREN'
 TT_RPAREN     	    = 'RPAREN'
 TT_LSQUARE          = 'LSQUARE'
@@ -124,6 +138,8 @@ TT_NEWLINE		    = 'NEWLINE'
 TT_EOF				= 'EOF'
 
 KEYWORDS = [
+    'MOD',
+    'DIV',
     'AND',
     'OR',
     'NOT',
@@ -181,6 +197,10 @@ class Lexer:
         self.pos.advance(self.current_char)
         self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
 
+    def reverse(self):
+        self.pos.reverse(self.current_char)
+        self.current_char = self.text[self.pos.idx] if self.pos.idx >= 0 else None
+
     def make_tokens(self):
         tokens = []
 
@@ -193,7 +213,11 @@ class Lexer:
                 tokens.append(Token(TT_NEWLINE, pos_start=self.pos))
                 self.advance()
             elif self.current_char in DIGITS:
-                tokens.append(self.make_number())
+                num, dot = self.make_number()
+                tokens.append(num)
+                if dot:
+                    tokens.append(dot)
+                    self.advance()
             elif self.current_char in LETTERS:
                 tokens.append(self.make_identifier())
             elif self.current_char == '"':
@@ -209,9 +233,13 @@ class Lexer:
             elif self.current_char == '/':
                 # tokens.append(Token(TT_DIV, pos_start=self.pos))
                 # self.advance()
-                self.skip_comment()
+                if self.skip_comment():
+                    tokens.append(Token(TT_DIV, pos_start=self.pos))
             elif self.current_char == '^':
                 tokens.append(Token(TT_POW, pos_start=self.pos))
+                self.advance()
+            elif self.current_char == '.':
+                tokens.append(Token(TT_DOT, pos_start=self.pos))
                 self.advance()
             elif self.current_char == '(':
                 tokens.append(Token(TT_LPAREN, pos_start=self.pos))
@@ -251,6 +279,7 @@ class Lexer:
         num_str = ''
         dot_count = 0
         pos_start = self.pos.copy()
+        dot_notation = False
 
         while self.current_char != None and self.current_char in DIGITS + '.':
             if self.current_char == '.':
@@ -259,10 +288,18 @@ class Lexer:
             num_str += self.current_char
             self.advance()
 
+        if num_str[-1] == '.':
+            num_str = num_str[:-1]
+            self.reverse()
+            dot_notation=True
+            pos_end = self.pos.copy()
+
         if dot_count == 0:
-            return Token(TT_INT, int(num_str), pos_start, self.pos)
+            return Token(TT_INT, int(num_str), pos_start, self.pos), None
         else:
-            return Token(TT_REAL, float(num_str), pos_start, self.pos)
+            if dot_notation == True:
+                return Token(TT_INT, int(num_str), pos_start, pos_end), Token(TT_DOT, pos_start=self.pos)
+            return Token(TT_REAL, float(num_str), pos_start, self.pos), None
 
     def make_string(self):
         string = ''
@@ -366,6 +403,7 @@ class Lexer:
             self.advance()
 
         self.advance()
+        return None
 
 #######################################
 # NODES
@@ -509,6 +547,16 @@ class BreakNode:
     def __init__(self, pos_start, pos_end):
         self.pos_start = pos_start
         self.pos_end = pos_end
+
+class FileNode:
+    def __init__(self, tok):
+        self.tok = tok
+
+        self.pos_start = self.tok.pos_start
+        self.end_start = self.tok.end_start
+
+    def __repr__(self):
+        return f'{self.tok}'
 
 #######################################
 # PARSE RESULT
@@ -731,7 +779,7 @@ class Parser:
         return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
 
     def term(self):
-        return self.bin_op(self.factor, (TT_MUL, TT_DIV))
+        return self.bin_op(self.factor, (TT_MUL, TT_DIV, (TT_KEYWORD, 'MOD'), (TT_KEYWORD, 'DIV')))
 
     def factor(self):
         res = ParseResult()
@@ -753,11 +801,17 @@ class Parser:
         res = ParseResult()
         atom = res.register(self.atom())
         if res.error: return res
+        arg_nodes = []
+
+        if self.current_tok.type == TT_DOT:
+            res.register_advancement()
+            self.advance()
+            atom, first_arg = res.register(self.atom()), atom
+            arg_nodes.append(first_arg)
 
         if self.current_tok.type == TT_LPAREN:
             res.register_advancement()
             self.advance()
-            arg_nodes = []
 
             if self.current_tok.type == TT_RPAREN:
                 res.register_advancement()
@@ -1079,7 +1133,7 @@ class Parser:
             res.register_advancement()
             self.advance()
 
-            if not (self.current_tok.type == TT_IDENTIFIER) or self.current_tok != var_name:
+            if not (self.current_tok.type == TT_IDENTIFIER) or (self.current_tok.type != var_name.type or self.current_tok.value != var_name.value):
                 return res.failure(InvalidSyntaxError(
                     self.current_tok.pos_start, self.current_tok.pos_end,
                     f"Expected identifier: '{var_name.value}'"
@@ -1396,6 +1450,12 @@ class Value:
     def notted(self, other):
         return None, self.illegal_operation(other)
 
+    def int_dived_by(self, other):
+        return None, self.illegal_operation(other)
+
+    def modded_by(self, other):
+        return None, self.illegal_operation(other)
+
     def execute(self, args):
         return RTResult().failure(self.illegal_operation())
 
@@ -1421,6 +1481,8 @@ class Number(Value):
     def added_to(self, other):
         if isinstance(other, Number):
             return Number(self.value + other.value).set_context(self.context), None
+        if isinstance(other, String):
+            return String(str(self.value) + other.value).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
@@ -1506,6 +1568,32 @@ class Number(Value):
     def notted(self):
         return Number(1 if self.value == 0 else 0).set_context(self.context), None
 
+    def int_dived_by(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end,
+                    'Division by zero',
+                    self.context
+                )
+
+            return Number(self.value // other.value).set_context(self.context), None
+        else:
+            return None, Value.illegal_operation(self, other)
+
+    def modded_by(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end,
+                    'Division by zero',
+                    self.context
+                )
+
+            return Number(self.value % other.value).set_context(self.context), None
+        else:
+            return None, Value.illegal_operation(self, other)
+
     def copy(self):
         copy = Number(self.value)
         copy.set_pos(self.pos_start, self.pos_end)
@@ -1534,6 +1622,8 @@ class String(Value):
     def added_to(self, other):
         if isinstance(other, String):
             return String(self.value + other.value).set_context(self.context), None
+        if isinstance(other, Number):
+            return String(self.value + str(other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
@@ -1615,6 +1705,79 @@ class Array(Value):
 
     def __repr__(self):
         return f'[{", ".join([repr(x) for x in self.elements])}]'
+
+class File(Value):
+    def __init__(self, location, current_line):
+        super().__init__()
+        self.location = location
+        self.current_line = current_line
+        if not os.path.exists("./__erl_cache__"):
+            os.mkdir("./__erl_cache__")
+
+    def copy(self):
+        copy = File(self.location, self.current_line)
+        copy.set_pos(self.pos_start, self.pos_end)
+        copy.set_context(self.context)
+        return copy
+
+    def execute_open(self, location, exec_ctx):
+        self.current_line = -1
+        self.location = location
+
+        return self, None
+
+    def execute_readline(self, exec_ctx):
+        res = RTResult()
+        cache_file = f"./__erl_cache__/{self.location}"
+        if os.path.isfile(cache_file) == True:
+            self.current_line = int(open(cache_file, "r").readline())
+        else:
+            self.current_line = 0
+        try:
+            f = open(self.location, "r")
+            content = f.readlines()
+            f.close()
+            line = content[self.current_line]
+            self.current_line+=1
+            open(cache_file, "w").write(str(self.current_line))
+            return line, None
+        except IndexError as e:
+            return None, RTError(
+                self.pos_start, self.pos_end,
+                "No more lines left in file to read",
+                exec_ctx
+            )
+        except Exception as e:
+            print(f"exception: {e}")
+            return None, RTError(
+                self.pos_start, self.pos_end,
+                "Unable to read to file",
+                exec_ctx
+            )
+
+    def execute_writeline(self, arg, exec_ctx):
+        res = RTResult()
+
+        try:
+            f = open(self.location, "a")
+            f.write(f"{str(arg)}\n")
+            f.close()
+        except:
+            return res.failure(RTError(
+                self.pos_start, self.pos_end,
+                "Unable to write to file",
+                exec_ctx
+            ))
+
+    def execute_endOfFile(self, exec_ctx):
+        pass
+
+    def execute_close(self, exec_ctx):
+        cache_file = f"./__erl_cache__/{self.location}.txt"
+        if os.path.isfile(cache_file) == True:
+            os.remove(cache_file)
+        del self
+        return RTResult().success(Number.null)
 
 class BaseFunction(Value):
     def __init__(self, name):
@@ -1736,7 +1899,7 @@ class BuiltInFunction(BaseFunction):
     # execute_input.arg_names = []
 
     def execute_input(self, exec_ctx):
-        text = input()
+        text = input(str(exec_ctx.symbol_table.get('value')))
         number = None
         string = None
         try:
@@ -1746,11 +1909,11 @@ class BuiltInFunction(BaseFunction):
                 number = float(text)
             except ValueError:
                 string = text
-        if number:
+        if type(number) == int or type(number) == float:
             return RTResult().success(Number(number))
         elif string:
             return RTResult().success(String(string))
-    execute_input.arg_names = []
+    execute_input.arg_names = ['value']
 
     def execute_input_int(self, exec_ctx):
         while True:
@@ -1902,20 +2065,77 @@ class BuiltInFunction(BaseFunction):
         return RTResult().success(Number.null)
     execute_run.arg_names = ["fn"]
 
-BuiltInFunction.print             = BuiltInFunction("print")
-BuiltInFunction.print_ret     = BuiltInFunction("print_ret")
-BuiltInFunction.input             = BuiltInFunction("input")
-BuiltInFunction.input_int     = BuiltInFunction("input_int")
-BuiltInFunction.clear             = BuiltInFunction("clear")
-BuiltInFunction.is_number     = BuiltInFunction("is_number")
-BuiltInFunction.is_string     = BuiltInFunction("is_string")
-BuiltInFunction.is_array         = BuiltInFunction("is_array")
+    def execute_open(self, exec_ctx):
+        location = exec_ctx.symbol_table.get("location")
+        return_file = File(location, -1)
+        return_value = return_file.execute_open(location.value, exec_ctx)
+        if return_value[1]:
+            return RTResult().failure(RTError(
+                self.pos_start, self.pos_end,
+                "There was an unexpected error opening this file",
+                exec_ctx
+            ))
+        return RTResult().success(return_value[0])
+    execute_open.arg_names = ["location"]
+
+    def execute_write(self, exec_ctx):
+        file = exec_ctx.symbol_table.get("file")
+        string = exec_ctx.symbol_table.get("string")
+        if not isinstance(file, File):
+            return RTResult().failure(RTError(
+                self.pos_start, self.pos_end,
+                "This method can only be ran on files",
+                exec_ctx
+            ))
+        file.execute_writeline(string, exec_ctx)
+        return RTResult().success(Number.null)
+    execute_write.arg_names = ["file", "string"]
+
+    def execute_read(self, exec_ctx):
+        file = exec_ctx.symbol_table.get("file")
+        if not isinstance(file, File):
+            return RTResult().failure(RTError(
+                self.pos_start, self.pos_end,
+                "This method can only be ran on files",
+                exec_ctx
+            ))
+        output = file.execute_readline(exec_ctx)
+        if type(output[1]) == RTError:
+            error = output[1]
+            return RTResult().failure(error)
+        return RTResult().success(String(output[0]))
+    execute_read.arg_names = ["file"]
+
+    def execute_close(self, exec_ctx):
+        file = exec_ctx.symbol_table.get("file")
+        if not isinstance(file, File):
+            return RTResult.failure(RTError(
+                self.pos_start, self.pos_end,
+                "This method can only be ran on files",
+                exec_ctx
+            ))
+        file.execute_close(exec_ctx)
+        return RTResult().success(Number.null)
+    execute_close.arg_names = ["file"]
+
+BuiltInFunction.print       = BuiltInFunction("print")
+BuiltInFunction.print_ret   = BuiltInFunction("print_ret")
+BuiltInFunction.input       = BuiltInFunction("input")
+BuiltInFunction.input_int   = BuiltInFunction("input_int")
+BuiltInFunction.clear       = BuiltInFunction("clear")
+BuiltInFunction.is_number   = BuiltInFunction("is_number")
+BuiltInFunction.is_string   = BuiltInFunction("is_string")
+BuiltInFunction.is_array    = BuiltInFunction("is_array")
 BuiltInFunction.is_function = BuiltInFunction("is_function")
-BuiltInFunction.append            = BuiltInFunction("append")
-BuiltInFunction.pop                 = BuiltInFunction("pop")
-BuiltInFunction.extend            = BuiltInFunction("extend")
-BuiltInFunction.len					= BuiltInFunction("len")
-BuiltInFunction.run					= BuiltInFunction("run")
+BuiltInFunction.append      = BuiltInFunction("append")
+BuiltInFunction.pop         = BuiltInFunction("pop")
+BuiltInFunction.extend      = BuiltInFunction("extend")
+BuiltInFunction.len			= BuiltInFunction("len")
+BuiltInFunction.run			= BuiltInFunction("run")
+BuiltInFunction.open        = BuiltInFunction("open")
+BuiltInFunction.write       = BuiltInFunction("write")
+BuiltInFunction.read        = BuiltInFunction("read")
+BuiltInFunction.close       = BuiltInFunction("close")
 
 #######################################
 # CONTEXT
@@ -2043,6 +2263,10 @@ class Interpreter:
             result, error = left.anded_by(right)
         elif node.op_tok.matches(TT_KEYWORD, 'OR'):
             result, error = left.ored_by(right)
+        elif node.op_tok.matches(TT_KEYWORD, 'DIV'):
+            result, error = left.int_dived_by(right)
+        elif node.op_tok.matches(TT_KEYWORD, 'MOD'):
+            result, error = left.modded_by(right)
 
         if error:
             return res.failure(error)
@@ -2227,6 +2451,10 @@ global_symbol_table.set("pop", BuiltInFunction.pop)
 global_symbol_table.set("extend", BuiltInFunction.extend)
 global_symbol_table.set("len", BuiltInFunction.len)
 global_symbol_table.set("run", BuiltInFunction.run)
+global_symbol_table.set("open", BuiltInFunction.open)
+global_symbol_table.set("writeLine", BuiltInFunction.write)
+global_symbol_table.set("readLine", BuiltInFunction.read)
+global_symbol_table.set("close", BuiltInFunction.close)
 
 def run(fn, text):
     # Generate tokens
@@ -2248,7 +2476,11 @@ def run(fn, text):
     return result.value, result.error
 
 def cleanup():
-    if os.path.exists("./__erl_cache__"): os.removefolder("./__erl_cache__")
+    if os.path.exists("./__erl_cache__"):
+        files = glob.glob("./__erl_cache__/*")
+        for f in files:
+            os.remove(f)
+        os.removedirs("./__erl_cache__")
 
 if __name__ == "__main__":
     import shell

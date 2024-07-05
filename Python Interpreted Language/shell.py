@@ -1,6 +1,4 @@
-# TODO: https://www.youtube.com/watch?v=uccr-hbp9KQ
 # TODO: see TODO in ERL.py
-# TODO: Finish video playlist, 
 #       fix syntax, 
 #       add remaining features from file:///D:/Data/Downloads/ocr-exam-reference-language-cheatsheet-poster.pdf
 #       sort all error eg. Syntax Error Code output
