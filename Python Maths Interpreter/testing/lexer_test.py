@@ -6,27 +6,27 @@ from lexer import Lexer
 import random
 
 class TestLexer(unittest.TestCase):
-    def testEmpty(self):
+    def test_Empty(self):
         tokens = list(Lexer("").generateTokens())
         self.assertEqual(tokens, [])
 
-    def testWhitespaceSpace(self):
+    def test_WhitespaceSpace(self):
         tokens = list(Lexer(" "*random.randint(1,10)).generateTokens())
         self.assertEqual(tokens, [])
 
-    def testWhitespaceLine(self):
+    def test_WhitespaceLine(self):
         tokens = list(Lexer("\n"*random.randint(1,10)).generateTokens())
         self.assertEqual(tokens, [])
 
-    def testWhitespaceTab(self):
+    def test_WhitespaceTab(self):
         tokens = list(Lexer("\t"*random.randint(1,10)).generateTokens())
         self.assertEqual(tokens, [])
 
-    def testWhitespaceMix(self):
+    def test_WhitespaceMix(self):
         tokens = list(Lexer(" "*random.randint(1,10)+"\n"*random.randint(1,10)+"\t"*random.randint(1,10)).generateTokens())
         self.assertEqual(tokens, [])
 
-    def testNumbers(self):
+    def test_Numbers(self):
         numbers = [random.randint(1,100),random.uniform(1,100), "."+str(random.randint(1,100)), str(random.randint(1,100))+".", "."]
         tokens = list(Lexer(' '.join(str(number) for number in numbers)).generateTokens())
         self.assertEqual(tokens, [
@@ -37,7 +37,7 @@ class TestLexer(unittest.TestCase):
             Token(TokenType.NUMBER, 0.0)
         ])
 
-    def testOperators(self):
+    def test_Operators(self):
         tokens = list(Lexer("+-*/^!").generateTokens())
         self.assertEqual(tokens, [
             Token(TokenType.PLUS),
@@ -48,17 +48,28 @@ class TestLexer(unittest.TestCase):
             Token(TokenType.FACTORIAL)
         ])
 
-    def testParens(self):
+    def test_Parens(self):
         tokens = list(Lexer("()").generateTokens())
         self.assertEqual(tokens, [
             Token(TokenType.LPAREN),
             Token(TokenType.RPAREN)
         ])
 
-    def testAll(self):
-        tokens = list(Lexer("12 +\t\n(16 / 14 * 12) - 6^7!").generateTokens())
+    def test_Variables(self):
+        tokens = list(Lexer("VAR SOLVE x y z").generateTokens())
+        self.assertEqual(tokens, [
+            Token(TokenType.KEYWORD, "VAR"),
+            Token(TokenType.KEYWORD, "SOLVE"),
+            Token(TokenType.IDENTIFIER, "x"),
+            Token(TokenType.IDENTIFIER, "y"),
+            Token(TokenType.IDENTIFIER, "z")
+        ])
+
+    def test_All(self):
+        tokens = list(Lexer("12x +\t\n(16 / 14 * 12) - 6^7!").generateTokens())
         self.assertEqual(tokens, [
             Token(TokenType.NUMBER, 12),
+            Token(TokenType.IDENTIFIER, "x"),
             Token(TokenType.PLUS),
             Token(TokenType.LPAREN),
             Token(TokenType.NUMBER, 16),

@@ -12,7 +12,6 @@ while True:
         tokens = lexer.generateTokens()
         parser = Parser(tokens)
         tree = parser.parse()
-        # print(tree)
         if not tree: continue
         interpreter = Interpreter(symbolTable)
         value = interpreter.visit(tree)

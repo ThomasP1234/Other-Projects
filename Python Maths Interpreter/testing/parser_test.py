@@ -66,6 +66,9 @@ class TestParse(unittest.TestCase):
         node = Parser(tokens).parse()
         self.assertEqual(node, FactorialNode(NumberNode(10.0)))
 
+    def testVariables(self):
+        pass
+
     def testFullExpression(self):
         tokens = [
             # 10! + 10 * (10^2 - 10) / 10

@@ -84,7 +84,13 @@ class Interpreter:
 
     def visitFactorialNode(self, node):
         try:
-            return Number(factorial(self.visit(node.node1).value))
+            number = self.visit(node.node1).value
+            if int(number) != number:
+                raise TypeError
+            number = int(number)
+            if number < 0:
+                raise ValueError
+            return Number(factorial(number))
         except TypeError or ValueError:
             raise Exception("Factorial only accepts positive integer values")
 
