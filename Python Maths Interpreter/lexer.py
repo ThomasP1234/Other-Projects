@@ -1,7 +1,13 @@
 from tokens import Token, TokenType
+from string import ascii_letters
 
 WHITESPACE = " \n\t"
 DIGITS = "0123456789"
+LETTERS = ascii_letters
+LETTERS_DIGITS = LETTERS + DIGITS
+KEYWORDS = [
+    "VAR"
+]
 
 class Lexer:
     def __init__(self, text):
@@ -20,6 +26,8 @@ class Lexer:
                 self.advance()
             elif self.currentCharacter == "." or self.currentCharacter in DIGITS:
                 yield self.generateNumber()
+            elif self.currentCharacter in LETTERS:
+                yield self.generateIdentifier()
             elif self.currentCharacter == "+":
                 self.advance()
                 yield Token(TokenType.PLUS)
@@ -44,6 +52,9 @@ class Lexer:
             elif self.currentCharacter == "!":
                 self.advance()
                 yield Token(TokenType.FACTORIAL)
+            elif self.currentCharacter == "=":
+                self.advance()
+                yield Token(TokenType.EQUALS)
             else:
                 raise Exception(f"Illegal Character '{self.currentCharacter}'")
 
@@ -61,8 +72,6 @@ class Lexer:
             numberStr += self.currentCharacter
             self.advance()
 
-        
-
         if numberStr.startswith("."):
             numberStr = "0" + numberStr
         
@@ -70,3 +79,15 @@ class Lexer:
             numberStr += "0"
 
         return Token(TokenType.NUMBER, float(numberStr))
+
+    def generateIdentifier(self):
+        identifierStr = self.currentCharacter
+        self.advance()
+
+        while self.currentCharacter != None and (self.currentCharacter in LETTERS_DIGITS + '_'):
+            identifierStr += self.currentCharacter
+            self.advance()
+
+        if identifierStr in KEYWORDS:
+            return Token(TokenType.KEYWORD, identifierStr)
+        return Token(TokenType.IDENTIFIER, identifierStr)

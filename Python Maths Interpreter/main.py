@@ -1,6 +1,9 @@
 from lexer import Lexer
 from parser_ import Parser
 from interpreter import Interpreter
+from symbol_table import SymbolTable
+
+symbolTable = SymbolTable()
 
 while True:
     try:
@@ -10,7 +13,7 @@ while True:
         parser = Parser(tokens)
         tree = parser.parse()
         if not tree: continue
-        interpreter = Interpreter()
+        interpreter = Interpreter(symbolTable)
         value = interpreter.visit(tree)
         print(value)
     except Exception as e:

@@ -8,6 +8,21 @@ class NumberNode:
         return f"({self.value})"
 
 @dataclass
+class AccessNode:
+    name: any
+
+    def __repr__(self):
+        return f"({self.value})"
+
+@dataclass
+class AssignNode:
+    name: any
+    value: any
+
+    def __repr__(self):
+        return f"({self.name}={self.value})"
+
+@dataclass
 class AddNode:
     node1: any
     node2: any

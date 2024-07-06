@@ -11,6 +11,9 @@ class TokenType(Enum):
     RPAREN      = 6
     POWER       = 7
     FACTORIAL   = 8
+    KEYWORD     = 9
+    IDENTIFIER  = 10
+    EQUALS      = 11
 
 @dataclass
 class Token:

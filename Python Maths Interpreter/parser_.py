@@ -27,6 +27,18 @@ class Parser:
         return result
 
     def expr(self):
+        if self.currentToken.type == TokenType.KEYWORD and self.currentToken.value == 'VAR':
+            self.advance()
+            if self.currentToken.type != TokenType.IDENTIFIER:
+                self.raiseError()
+            identifier = self.currentToken.value
+            self.advance()
+            if self.currentToken.type != TokenType.EQUALS:
+                self.raiseError()
+            self.advance()
+            result = AssignNode(identifier, self.expr())
+            return result
+
         result = self.term()
 
         while self.currentToken != None and self.currentToken.type in (TokenType.PLUS,TokenType.MINUS):
@@ -85,7 +97,19 @@ class Parser:
             self.advance()
             if self.currentToken != None and self.currentToken.type == TokenType.LPAREN:
                 return MultiplyNode(NumberNode(token.value), self.factor())
+            if self.currentToken != None and self.currentToken.type == TokenType.IDENTIFIER:
+                variable = self.currentToken
+                self.advance()
+                if self.currentToken != None and self.currentToken.type == TokenType.LPAREN:
+                    return MultiplyNode(MultiplyNode(NumberNode(token.value), AccessNode(variable.value)), self.factor())
+                return MultiplyNode(NumberNode(token.value), AccessNode(variable.value))
             return NumberNode(token.value)
+
+        if token.type == TokenType.IDENTIFIER:
+            self.advance()
+            if self.currentToken != None and self.currentToken.type == TokenType.LPAREN:
+                return MultiplyNode(AccessNode(token.value), self.factor())
+            return AccessNode(token.value)
 
         elif token.type == TokenType.LPAREN:
             self.advance()

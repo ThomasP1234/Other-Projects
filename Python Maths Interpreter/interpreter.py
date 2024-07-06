@@ -3,6 +3,9 @@ from nodes import *
 from value import *
 
 class Interpreter:
+    def __init__(self, symbolTable):
+        self.symbolTable = symbolTable
+
     def visit(self, node):
         methodName = f"visit{type(node).__name__}"
         method = getattr(self, methodName)
@@ -10,6 +13,15 @@ class Interpreter:
 
     def visitNumberNode(self, node):
         return Number(node.value)
+
+    def visitAccessNode(self, node):
+        if value:=self.symbolTable.get(node.name):
+            return value
+        raise Exception(f"{node.name} is not defined")
+
+    def visitAssignNode(self, node):
+        self.symbolTable.set(node.name, value:=self.visit(node.value))
+        return Number(value)
 
     def visitAddNode(self, node):
         return Number(self.visit(node.node1).value + self.visit(node.node2).value)
