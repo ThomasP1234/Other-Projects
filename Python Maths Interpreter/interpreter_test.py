@@ -5,33 +5,36 @@ from math import factorial
 from nodes import *
 from interpreter import Interpreter
 from value import *
+from symbol_table import SymbolTable
 import random
 
 class TestInterpreter(unittest.TestCase):
+    symbolTable = SymbolTable()
+
     def testNumbers(self):
-        value = Interpreter().visit(NumberNode(10.0))
+        value = Interpreter(self.symbolTable).visit(NumberNode(10.0))
         self.assertEqual(value, Number(10.0))
 
     def testIndividualOperations(self):
-        value = Interpreter().visit(AddNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
+        value = Interpreter(self.symbolTable).visit(AddNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
         self.assertEqual(value, Number(num1+num2))
 
-        value = Interpreter().visit(SubtractNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
+        value = Interpreter(self.symbolTable).visit(SubtractNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
         self.assertEqual(value, Number(num1-num2))
 
-        value = Interpreter().visit(MultiplyNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
+        value = Interpreter(self.symbolTable).visit(MultiplyNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
         self.assertEqual(value, Number(num1*num2))
 
-        value = Interpreter().visit(DivideNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
+        value = Interpreter(self.symbolTable).visit(DivideNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
         self.assertEqual(value, Number(num1/num2))
 
         with self.assertRaises(Exception):
-            value = Interpreter().visit(DivideNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(0.0)))
+            value = Interpreter(self.symbolTable).visit(DivideNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(0.0)))
 
-        value = Interpreter().visit(PowerNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
+        value = Interpreter(self.symbolTable).visit(PowerNode(NumberNode(num1:=random.uniform(1,100)), NumberNode(num2:=random.uniform(1,100))))
         self.assertEqual(value, Number(num1**num2))
 
-        value = Interpreter().visit(FactorialNode(NumberNode(num1:=random.randint(1,10))))
+        value = Interpreter(self.symbolTable).visit(FactorialNode(NumberNode(num1:=random.randint(1,10))))
         self.assertEqual(value, Number(float(factorial(num1))))
 
     def testFullExpression(self):
@@ -49,5 +52,5 @@ class TestInterpreter(unittest.TestCase):
                             NumberNode(10.0))), 
                     NumberNode(10.0)))
 
-        result = Interpreter().visit(tree)
+        result = Interpreter(self.symbolTable).visit(tree)
         self.assertEqual(result.value, 3628890.0)

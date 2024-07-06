@@ -12,7 +12,7 @@ class AccessNode:
     name: any
 
     def __repr__(self):
-        return f"({self.value})"
+        return f"({self.name})"
 
 @dataclass
 class AssignNode:
@@ -21,6 +21,14 @@ class AssignNode:
 
     def __repr__(self):
         return f"({self.name}={self.value})"
+
+@dataclass
+class SolveNode:
+    node1: any
+    node2: any
+
+    def __repr__(self):
+        return f"SOLVE ({self.node1} - {self.node2} = 0)"
 
 @dataclass
 class AddNode:

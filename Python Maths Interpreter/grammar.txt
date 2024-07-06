@@ -1,0 +1,9 @@
+expr: KEYWORD:VAR IDENTIFIER EQUALS expr
+    : KEYWORD:SOLVE expr EQUALS expr
+    : term ADD term (ADD term)
+    : term SUBTRACT term (SUBTRACT)
+
+term: factor * factor (* factor)
+    : factor / factor (/ factor)
+
+factor: 

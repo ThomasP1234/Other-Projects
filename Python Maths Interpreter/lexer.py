@@ -6,7 +6,8 @@ DIGITS = "0123456789"
 LETTERS = ascii_letters
 LETTERS_DIGITS = LETTERS + DIGITS
 KEYWORDS = [
-    "VAR"
+    "VAR",
+    "SOLVE"
 ]
 
 class Lexer:
