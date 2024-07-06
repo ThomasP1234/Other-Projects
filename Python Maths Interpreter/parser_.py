@@ -47,6 +47,14 @@ class Parser:
             self.advance()
             result = SolveNode(lhs, self.expr())
             return result
+        
+        if self.currentToken.type == TokenType.KEYWORD and self.currentToken.value == "HELP":
+            self.advance()
+            if self.currentToken.type != TokenType.KEYWORD:
+                self.raiseError()
+            result = HelpNode(self.currentToken.value)
+            self.advance()
+            return result
 
         result = self.term()
 

@@ -67,7 +67,16 @@ class TestParse(unittest.TestCase):
         self.assertEqual(node, FactorialNode(NumberNode(10.0)))
 
     def testVariables(self):
-        pass
+        tokens = [
+            Token(TokenType.KEYWORD, "VAR"),
+            Token(TokenType.IDENTIFIER, "x"),
+            Token(TokenType.EQUALS),
+            Token(TokenType.IDENTIFIER, "x"),
+            Token(TokenType.PLUS),
+            Token(TokenType.NUMBER, 1)
+        ]
+        node = Parser(tokens).parse()
+        self.assertEqual(node, AssignNode("x", AddNode(AccessNode("x"), NumberNode(1))))
 
     def testFullExpression(self):
         tokens = [

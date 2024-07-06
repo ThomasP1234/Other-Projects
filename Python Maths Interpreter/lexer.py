@@ -7,7 +7,8 @@ LETTERS = ascii_letters
 LETTERS_DIGITS = LETTERS + DIGITS
 KEYWORDS = [
     "VAR",
-    "SOLVE"
+    "SOLVE",
+    "HELP"
 ]
 
 class Lexer:

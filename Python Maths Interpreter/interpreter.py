@@ -1,6 +1,7 @@
 from math import factorial
 from nodes import *
 from value import *
+from help_info import helpInfo
 
 class Interpreter:
     def __init__(self, symbolTable):
@@ -32,7 +33,7 @@ class Interpreter:
 
     def visitAssignNode(self, node):
         self.symbolTable.set(node.name, value:=self.visit(node.value))
-        return Number(value)
+        return Number(value.value)
 
     def visitSolveNode(self, node):
         self.solveMode[0] = True
@@ -63,6 +64,9 @@ class Interpreter:
         if round(100*(lhs-rhs))/100!=0:
             raise Exception("No real solutions have been found")
         return x
+    
+    def visitHelpNode(self, node):
+        return String(helpInfo[node.keyword])
     
     def visitAddNode(self, node):
         return Number(self.visit(node.node1).value + self.visit(node.node2).value)

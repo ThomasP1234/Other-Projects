@@ -40,6 +40,11 @@ class TestInterpreter(unittest.TestCase):
         with self.assertRaises(Exception):
             value = Interpreter(self.symbolTable).visit(FactorialNode(NumberNode(num1:=random.uniform(-10,10))))
 
+    def testVariables(self):
+        self.symbolTable.set("x", Number(1.0))
+        value = Interpreter(self.symbolTable).visit(AssignNode("x", AddNode(AccessNode("x"), NumberNode(1.0))))
+        self.assertEqual(value, Number(2.0))
+
     def testFullExpression(self):
         tree = AddNode(
                 FactorialNode(

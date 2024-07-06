@@ -29,6 +29,13 @@ class SolveNode:
 
     def __repr__(self):
         return f"SOLVE ({self.node1} - {self.node2} = 0)"
+    
+@dataclass
+class HelpNode:
+    keyword: any
+
+    def __repr__(self):
+        return f"Define {self.keyword}"
 
 @dataclass
 class AddNode:
